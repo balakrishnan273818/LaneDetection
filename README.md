@@ -1,56 +1,163 @@
 # **Finding Lane Lines on the Road** 
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-
-<img src="examples/laneLines_thirdPass.jpg" width="480" alt="Combined Image" />
-
-Overview
----
-
-When we drive, we use our eyes to decide where to go.  The lines on the road that show us where the lanes are act as our constant reference for where to steer the vehicle.  Naturally, one of the first things we would like to do in developing a self-driving car is to automatically detect lane lines using an algorithm.
-
-In this project you will detect lane lines in images using Python and OpenCV.  OpenCV means "Open-Source Computer Vision", which is a package that has many useful tools for analyzing images.  
-
-To complete the project, two files will be submitted: a file containing project code and a file containing a brief write up explaining your solution. We have included template files to be used both for the [code](https://github.com/udacity/CarND-LaneLines-P1/blob/master/P1.ipynb) and the [writeup](https://github.com/udacity/CarND-LaneLines-P1/blob/master/writeup_template.md).The code file is called P1.ipynb and the writeup template is writeup_template.md 
-
-To meet specifications in the project, take a look at the requirements in the [project rubric](https://review.udacity.com/#!/rubrics/322/view)
 
 
-Creating a Great Writeup
----
-For this project, a great writeup should provide a detailed response to the "Reflection" section of the [project rubric](https://review.udacity.com/#!/rubrics/322/view). There are three parts to the reflection:
+**Finding Lane Lines on the Road**
 
-1. Describe the pipeline
+In this project, I used OpenCV, python Matplotlib, numerical python to find lane lines in the given dataset.  
 
-2. Identify any shortcomings
+The following techniques are used:
 
-3. Suggest possible improvements
+- GrayScale Conversion
+- Noise Reduction using Gaussian Blur
+- Canny Edge Detection
+- Region of Interest Selection
+- Hough Transform Line Detection
 
-We encourage using images in your writeup to demonstrate how your pipeline works.  
-
-All that said, please be concise!  We're not looking for you to write a book here: just a brief description.
-
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup. Here is a link to a [writeup template file](https://github.com/udacity/CarND-LaneLines-P1/blob/master/writeup_template.md). 
+First i have applied these techniques to my test images and as per the rubric i have gotten the final output
+![png](examples/Extrapolated_lines.png)
 
 
-The Project
----
+Then i used it to process video clips to find lane lines in them.
 
-## If you have already installed the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) you should be good to go!   If not, you should install the starter kit to get started on this project. ##
 
-**Step 1:** Set up the [CarND Term1 Starter Kit](https://classroom.udacity.com/nanodegrees/nd013/parts/fbf77062-5703-404e-b60c-95b78b2f3f9e/modules/83ec35ee-1e02-48a5-bdb7-d244bd47c2dc/lessons/8c82408b-a217-4d09-b81d-1bda4c6380ef/concepts/4f1870e0-3849-43e4-b670-12e6f2d4b7a7) if you haven't already.
+### Gray Scale Conversion
 
-**Step 2:** Open the code in a Jupyter Notebook
+The Input images are three channel RGB images and they have to be converted
+into single channel images in order to detect(edges) in them.
 
-You will complete the project code in a Jupyter notebook.  If you are unfamiliar with Jupyter Notebooks, check out [Udacity's free course on Anaconda and Jupyter Notebooks](https://classroom.udacity.com/courses/ud1111) to get started.
+It can be done using the formula
 
-Jupyter is an Ipython notebook where you can run blocks of code and see results interactively.  All the code for this project is contained in a Jupyter notebook. To start Jupyter in your browser, use terminal to navigate to your project directory and then run the following command at the terminal prompt (be sure you've activated your Python 3 carnd-term1 environment as described in the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) installation instructions!):
+Grayscale = 0.3 * RedChannel + 0.59 * GreenChannel + 0.11 * BlueChannel
 
-`> jupyter notebook`
+This operation has to happen pixel wise globally throught the image.
 
-A browser window will appear showing the contents of the current directory.  Click on the file called "P1.ipynb".  Another browser window will appear displaying the notebook.  Follow the instructions in the notebook to complete the project.  
+![png](examples/GrayConversion.png)
 
-**Step 3:** Complete the project and submit both the Ipython notebook and the project writeup
+### Noise Reduction using Gaussian Smoothing
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+Once after converting the images to grayscale the next step is to reduce
+the noise in the image.
+
+The ultimate aim is to detect the edges(rapid change in pixel intensity).
+
+we need to smooth the edges so that the pixel intensity will be distributed
+along the neighbouring pixels and the noise in the image will be reduced due
+to this operation.
+
+Kernel_size is an important parameter which should be taken into account
+while designing the gaussian filter, i have used kernel_size = 7 keeping in 
+mind that it suffices the requirement for the given dataset and any further 
+increase in the kernel_size would have an impact on the processing time.
+
+
+![png](examples/GaussianBlur.png)
+
+### Canny Edge Detection
+
+Once after converting applying gaussian filter the next step is to detect the edges in the image.
+
+Canny algorithm has the following steps:
+
+1) Gradient calculation.
+   - The gradients can be determined by using a Sobel filter.
+   - Its a first order derivative along both x and y axis.
+   - The Magnitude and angle of the directional gradients are computed.
+2) Non Maximal Suppression
+    - Depending upon the direction of the gradient, every pixel will be
+    compared against its immediate neighbours on both direction. if the
+    current pixel is proven to be local maxima then it will be preserved
+    or else it will be discarded.
+3)Double Thresholding
+    - Each pixel will be compared against two thresholds(lower and upper)
+      the pixels whose intensity level is more than upper threshold will be
+      considered as strong edges and those who fall in between upper and lower
+      thresholds are called weak edges, rest will not be considered as edges.
+4)Edge Tracking by Hysteresis
+    - Once this the strong edges and weak edges are determined then all the
+    weak edges who don't share a connection with strong edges will be removed
+    and the weak edges with connection to the strong edges are preserved.
+
+
+![png](examples/canny.png)
+
+
+### Region of Interest Selection
+
+Once after we detect the edges with the help of CannyEdgeDetection algorithm
+
+we need to find to establish the working area, the region where we are
+interested so as to limit our focus only within those region and eliminate
+unwanted features in the image.
+
+In this project i have considered an ROI pyramid which will foucs on the
+current lane and it has three co-ordinates
+`Apex = [Width/2,(Height/2)+Height*0.05]`
+Apex is at the center of the frame(almost) and y-axis is shifted to 5% of its height from the center
+`LeftBottom = [0 + Width*0.06,Height]`
+Left Bottom is at an 6% offset on the left bottom side of the image
+`RightBottom = [Width-Width*0.06,Height]`
+Right Bottom is at an 6% offset on the Right bottom side of the image
+
+![png](examples/ROI.png)
+
+### Line Detection using Hough Line Transform
+
+Once after the ROI is determined i have used Hough line transform to detect
+the lines representing the left and right lanes
+
+The Hough transform is designed to detect lines, using the parametric representation of a line:
+
+rho = x*cos(theta) + y*sin(theta)
+
+The variable rho is the distance from the origin to the line along a vector perpendicular to the line. theta is the angle between the x-axis and this vector. The hough function generates a parameter space matrix whose rows and columns correspond to these rho and theta values, respectively
+
+- threshold: Accumulator threshold parameter. Only those lines are returned that get enough votes greater than the threshold.
+- minLineLength: Minimum line length. Line segments shorter than that will be rejected.
+- maxLineGap: Maximum allowed gap between points on the same line to link them.
+
+The parameters for Hough line transform are fixed after series of expeimentation with various combinations of minLineLength and maxLineGap.
+
+![png](examples/HoughLineTransform.png)
+Finally i have drawn the detected lines onto the original images.
+![png](examples/HoughLineTransform1.png)
+
+### Line Extrapolation
+
+Once the hough transform is applied there are multiple lines detected for a lane line. averaged line for that needs to be calculated.
+
+As some lane lines are only partially recognized, it is necessary to extrapolate the line to cover full lane line length.
+
+Two lanes are required one for the left and the other for the right.  
+The left lane should have a negative slope, and the right lane should have a positive slope since the left top is refered as origin of the image
+
+positive slope lines and negative slope lines are collected separately and averages are calcualted.
+
+using the slope and intercept two lines(left,right) need to be derived.
+
+post that there is a need to convert the slope and intercept into pixel points before ploting them.
+
+y-coordinates are hardcoded such as y1 will always be the height of the image and y2 be 60% of the image height
+as anything above 60% should lead to intersection of both lane lines.
+
+
+In terms of video an track history of previous 30 frames are considered so that mean is calculated and
+it helps in stabilizing the output for the current frame in case of deviation.
+ 
+
+
+
+![png](examples/Extrapolated_lines.png)
+
+
+### potential shortcomings with current pipeline
+
+
+One potential shortcoming would be what would happen when the road is too much curvy as i have very little
+time to work i am yet to figure out how to make the output stabilized for the "challenge.mp4"
+
+
+
+### possible improvements to current pipeline
+
+A possible improvement would be to consider a trapezoidal approach for ROI rather than a pyramid based approach.
 
